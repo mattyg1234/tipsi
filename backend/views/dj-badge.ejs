@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Badge - TIPSI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .dj-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #7c3aed;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #7c3aed;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="dj-icon">🎵</div>
+        <h1 class="title">DJ Badge</h1>
+        <p class="subtitle">Tap in/out to manage your DJ sessions</p>
+
+        <form id="dj-form">
+            <div class="form-group">
+                <label class="form-label">Venue ID</label>
+                <input type="text" class="form-input" id="venueId" placeholder="Enter venue ID" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">DJ ID</label>
+                <input type="text" class="form-input" id="djId" placeholder="Enter DJ ID" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="tap-in-btn">🎵 Tap In (Start Session)</button>
+            <button type="button" class="btn btn-secondary" id="tap-out-btn">⏹️ Tap Out (End Session)</button>
+        </form>
+
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('dj-form');
+        const status = document.getElementById('status');
+        const tapInBtn = document.getElementById('tap-in-btn');
+        const tapOutBtn = document.getElementById('tap-out-btn');
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        async function tapAction(action) {
+            const venueId = document.getElementById('venueId').value.trim();
+            const djId = document.getElementById('djId').value.trim();
+
+            if (!venueId || !djId) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/dj/tap', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        venueId,
+                        djId,
+                        action
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(result.message, 'success');
+                } else {
+                    throw new Error(result.error || 'Action failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Failed to perform action: ' + error.message, 'error');
+            }
+        }
+
+        // Tap In
+        tapInBtn.addEventListener('click', () => tapAction('start'));
+
+        // Tap Out
+        tapOutBtn.addEventListener('click', () => tapAction('end'));
+
+        // Form submission (prevent default)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            tapAction('start');
+        });
+    </script>
+</body>
+</html>

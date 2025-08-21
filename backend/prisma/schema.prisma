@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Venue {
+  id         String   @id @default(cuid())
+  name       String
+  connectId  String?  // Stripe Connect account ID
+  brandColor String   @default("#6366f1")
+  logoUrl    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  tables     Table[]
+  menuItems  MenuItem[]
+  djSessions DJSession[]
+  orders     Order[]
+  users      User[]
+
+  @@map("venues")
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  venueId   String
+  number    Int
+  nfcUid    String?  // NFC card UID
+  createdAt DateTime @default(now())
+
+  // Relations
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([venueId, number])
+  @@map("tables")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         UserRole
+  name         String
+  tgChatId     String?  // Telegram chat ID
+  connectId    String?  // Stripe Connect account ID (for DJs)
+  venueId      String?  // For venue admins and staff
+  createdAt    DateTime @default(now())
+
+  // Relations
+  venue      Venue?      @relation(fields: [venueId], references: [id])
+  djSessions DJSession[]
+
+  @@map("users")
+}
+
+model DJSession {
+  id        String   @id @default(cuid())
+  venueId   String
+  djId      String
+  active    Boolean  @default(true)
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+
+  // Relations
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  dj    User  @relation(fields: [djId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, active])
+  @@map("dj_sessions")
+}
+
+model MenuItem {
+  id         String   @id @default(cuid())
+  venueId    String
+  category   String
+  name       String
+  priceCents Int
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@map("menu_items")
+}
+
+model Order {
+  id                   String      @id @default(cuid())
+  venueId              String
+  tableId              String
+  productType          ProductType
+  qty                  Int
+  amountCents          Int
+  songText             String?
+  routedToConnectId    String?     // DJ or venue Connect ID
+  staffBonusCents      Int         @default(0)
+  stripeSessionId      String      @unique
+  status               OrderStatus @default(PAID)
+  createdAt            DateTime    @default(now())
+
+  // Relations
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
+
+enum UserRole {
+  VENUE_ADMIN
+  DJ
+  STAFF
+}
+
+enum ProductType {
+  REQUEST
+  SHOTS
+  BOTTLE
+  FOOD
+  DRINK
+  TICKET
+}
+
+enum OrderStatus {
+  PAID
+  REFUNDED
+  FAILED
+}
